@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Store full conversation as an array
+// ✅ Initial system prompt
 let conversationHistory = [
   {
     role: "system",
@@ -20,12 +20,14 @@ let conversationHistory = [
   }
 ];
 
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send("NemesisAI backend is running 🚀");
 });
 
-
 app.post('/debate', async (req, res) => {
+  console.log("📥 Incoming body:", req.body);  // Debug log
+
   const { belief, category } = req.body;
 
   // Push user belief into history
@@ -34,11 +36,20 @@ app.post('/debate', async (req, res) => {
     content: `Category: ${category || 'Random'}\nUser belief: ${belief}`
   });
 
+  // ✅ Limit conversation history (avoid very large payloads)
+  if (conversationHistory.length > 20) {
+    conversationHistory = conversationHistory.slice(-20);
+    conversationHistory.unshift({
+      role: "system",
+      content: "You are NemesisAI 💀 — a ruthless debate expert. Always reply in 2-3 short, punchy, aggressive bullet points."
+    });
+  }
+
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, // API key from .env
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, // API key from Render env
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -50,10 +61,13 @@ app.post('/debate', async (req, res) => {
     });
 
     const data = await response.json();
+    console.log("📡 Groq raw response:", data); // Debug log
 
     if (!data || !data.choices || !data.choices[0].message) {
-      console.log('❌ Missing response from Groq');
-      return res.status(500).json({ reply: ['Nemesis is confused. Try again.'] });
+      return res.status(500).json({
+        reply: ['Nemesis is confused. Try again.'],
+        error: data
+      });
     }
 
     const rawResponse = data.choices[0].message.content;
@@ -72,9 +86,13 @@ app.post('/debate', async (req, res) => {
 
     console.log('🎯 Nemesis reply:', formatted);
     res.json({ reply: formatted });
+
   } catch (err) {
     console.error('🔥 Error from Groq:', err);
-    res.status(500).json({ reply: ['Nemesis crashed. Try again later.'] });
+    res.status(500).json({
+      reply: ['Nemesis crashed. Try again later.'],
+      error: err.message
+    });
   }
 });
 
