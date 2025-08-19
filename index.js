@@ -20,6 +20,11 @@ let conversationHistory = [
   }
 ];
 
+app.get('/', (req, res) => {
+  res.send("NemesisAI backend is running 🚀");
+});
+
+
 app.post('/debate', async (req, res) => {
   const { belief, category } = req.body;
 
