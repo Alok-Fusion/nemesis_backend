@@ -53,7 +53,7 @@ app.post('/debate', async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192", // Or try "mixtral-8x7b-32768"
+        model:"mixtral-8x7b-32768", // "llama3-8b-8192", // Or try "mixtral-8x7b-32768"
         messages: conversationHistory,
         temperature: 0.8,
         max_tokens: 300
